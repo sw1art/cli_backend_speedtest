@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "download-benchmark"
+version = "1.0.0"
+description = "Measure download speed by performing sequential HTTP requests."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["httpx>=0.27,<1.0"]
+
+[project.scripts]
+download-benchmark = "download_benchmark.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["download_benchmark*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
