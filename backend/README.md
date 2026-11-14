@@ -175,13 +175,13 @@ curl -X POST http://localhost:8000/api/v1/tasks \
 Получение статуса:
 
 ```bash
-curl http://localhost:8000/api/v1/tasks/3fa85f64-5717-4562-b3fc-2c963f66afa6
+curl http://localhost:8000/api/v1/tasks/{uuid}
 ```
 
 Получение результатов:
 
 ```bash
-curl http://localhost:8000/api/v1/tasks/3fa85f64-5717-4562-b3fc-2c963f66afa6/results
+curl http://localhost:8000/api/v1/tasks/{uuid}/results
 ```
 
 ## Структура БД
