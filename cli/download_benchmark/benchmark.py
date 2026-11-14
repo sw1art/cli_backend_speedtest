@@ -8,6 +8,8 @@ it can be unit-tested in isolation. The public entry point is
 
 from __future__ import annotations
 
+import math
+import statistics
 import time
 from dataclasses import dataclass, field
 from typing import Iterator, List, Optional
@@ -81,6 +83,34 @@ class BenchmarkSummary:
             return None
         return self.total_bytes / self.total_time
 
+    @property
+    def min_time(self) -> Optional[float]:
+        if not self.successful_results:
+            return None
+        return min(r.elapsed_seconds for r in self.successful_results)
+
+    @property
+    def max_time(self) -> Optional[float]:
+        if not self.successful_results:
+            return None
+        return max(r.elapsed_seconds for r in self.successful_results)
+
+    @property
+    def median_time(self) -> Optional[float]:
+        if not self.successful_results:
+            return None
+        return statistics.median(r.elapsed_seconds for r in self.successful_results)
+
+    @property
+    def p95_time(self) -> Optional[float]:
+        return _percentile([r.elapsed_seconds for r in self.successful_results], 0.95)
+
+    @property
+    def stddev_time(self) -> Optional[float]:
+        if len(self.successful_results) < 2:
+            return None
+        return statistics.stdev(r.elapsed_seconds for r in self.successful_results)
+
 
 def validate_url(url: str) -> str:
     """Validate and normalise a target URL.
@@ -117,6 +147,20 @@ def _describe_error(exc: Exception) -> str:
     return f"{type(exc).__name__}: {exc}"
 
 
+def _percentile(values: List[float], p: float) -> Optional[float]:
+    """Return the ``p``-th percentile (0.0-1.0) using linear interpolation."""
+    if not values:
+        return None
+    ordered = sorted(values)
+    k = (len(ordered) - 1) * p
+    lower = math.floor(k)
+    upper = math.ceil(k)
+    if lower == upper:
+        return ordered[int(k)]
+    weight = k - lower
+    return ordered[lower] * (1 - weight) + ordered[upper] * weight
+
+
 class DownloadBenchmarker:
     """Performs sequential HTTP GET requests and reports per-request timing."""
 
@@ -128,9 +172,7 @@ class DownloadBenchmarker:
         self._timeout = timeout
         self._client = client
 
-    def iter_results(
-        self, url: str, requests: int = DEFAULT_REQUESTS
-    ) -> Iterator[RequestResult]:
+    def iter_results(self, url: str, requests: int = DEFAULT_REQUESTS) -> Iterator[RequestResult]:
         """Yield one :class:`RequestResult` per request, in order.
 
         The HTTP client is opened once and reused across the sequence, then
@@ -168,7 +210,10 @@ class DownloadBenchmarker:
     def _perform(self, client: httpx.Client, url: str, index: int) -> RequestResult:
         start = time.perf_counter()
         try:
-            response = client.get(url)
+            # Request uncompressed content (Accept-Encoding: identity) so that
+            # ``len(body)`` equals the bytes actually transferred over the wire
+            # rather than a decompressed payload.
+            response = client.get(url, headers={"Accept-Encoding": "identity"})
             body = response.content  # force a full read of the response body
             elapsed = time.perf_counter() - start
             success = 200 <= response.status_code < 300

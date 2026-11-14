@@ -1,4 +1,5 @@
 """Port for downloading a URL and measuring per-request statistics."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

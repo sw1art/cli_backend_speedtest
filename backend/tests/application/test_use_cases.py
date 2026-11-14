@@ -9,6 +9,7 @@ from app.application.use_cases.execute_benchmark import ExecuteDownloadBenchmark
 from app.application.use_cases.get_history import GetDownloadHistory
 from app.application.use_cases.get_task import GetDownloadTask
 from app.domain.entities.download_task import DownloadTask
+from app.domain.exceptions import UnsafeURL
 from app.domain.value_objects.benchmark import RequestResult
 from app.domain.value_objects.task_status import TaskStatus
 from tests.fakes import FakeHttpClient, FakePublisher, FakeTaskRepository
@@ -89,3 +90,33 @@ async def test_get_history_paginates():
     dto = await GetDownloadHistory(repo).execute(limit=2, offset=0)
     assert dto.total == 3
     assert len(dto.items) == 2
+
+
+async def test_create_task_url_guard_blocks_unsafe_url():
+    repo = FakeTaskRepository()
+    pub = FakePublisher()
+
+    async def guard(url):
+        raise UnsafeURL("blocked")
+
+    with pytest.raises(UnsafeURL):
+        await CreateDownloadTask(repo, pub, url_guard=guard).execute(
+            CreateTaskDTO(url="https://example.com/x")
+        )
+    assert await repo.count() == 0
+
+
+async def test_execute_benchmark_url_guard_called():
+    repo = FakeTaskRepository()
+    task = DownloadTask.create(url="https://example.com/x", total_requests=1)
+    await repo.add(task)
+    http = FakeHttpClient(results=[RequestResult(1, 1.0, 500, 200, True)])
+
+    calls = []
+
+    async def guard(url):
+        calls.append(url)
+
+    dto = await ExecuteDownloadBenchmark(repo, http, url_guard=guard).execute(task.id)
+    assert dto.status == "COMPLETED"
+    assert calls == ["https://example.com/x"]

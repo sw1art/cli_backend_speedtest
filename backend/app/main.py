@@ -1,10 +1,12 @@
 """FastAPI application factory and composition root."""
+
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from typing import AsyncIterator, Optional
 
 from fastapi import FastAPI
+from fastapi.responses import Response
 
 from .core.config import Settings, get_settings
 from .core.logging import setup_logging
@@ -13,6 +15,9 @@ from .infrastructure.messaging.rabbitmq_client import (
     RabbitMQClient,
     UnavailableMessagePublisher,
 )
+from .infrastructure.observability.metrics import render_metrics
+from .infrastructure.observability.middleware import metrics_middleware
+from .infrastructure.ssrf import build_url_guard
 from .presentation.api.router import api_router
 
 
@@ -48,6 +53,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     app = FastAPI(title=settings.app_name, version="1.0.0", lifespan=lifespan)
     app.state.settings = settings
+    app.state.url_guard = build_url_guard(settings)
+    app.middleware("http")(metrics_middleware)
+
+    @app.get("/metrics", include_in_schema=False)
+    async def metrics() -> Response:
+        return Response(content=render_metrics(), media_type="text/plain; version=0.0.4")
+
     app.include_router(api_router)
     return app
 

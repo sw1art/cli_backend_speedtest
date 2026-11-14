@@ -1,4 +1,5 @@
 """Domain service: URL validation rules (no framework dependencies)."""
+
 from __future__ import annotations
 
 from urllib.parse import urlsplit

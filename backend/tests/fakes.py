@@ -1,11 +1,12 @@
 """In-memory fakes used across tests to keep layers decoupled."""
+
 from __future__ import annotations
 
 from typing import Dict, List, Optional
 from uuid import UUID
 
 from app.application.interfaces.http_client import HttpClient
-from app.application.interfaces.message_publisher import MessagePublisher
+from app.application.interfaces.message_publisher import RetryableMessagePublisher
 from app.domain.entities.download_task import DownloadTask
 from app.domain.repositories.task_repository import DownloadTaskRepository
 from app.domain.value_objects.benchmark import RequestResult
@@ -36,15 +37,19 @@ class FakeTaskRepository(DownloadTaskRepository):
         return len(self._tasks)
 
 
-class FakePublisher(MessagePublisher):
+class FakePublisher(RetryableMessagePublisher):
     def __init__(self) -> None:
         self.published: List[UUID] = []
+        self.retried: List[tuple] = []
         self.fail = False
 
     async def publish(self, task_id: UUID) -> None:
         if self.fail:
             raise ConnectionError("broker down")
         self.published.append(task_id)
+
+    async def publish_retry(self, task_id: UUID, retry_count: int, delay_ms: int) -> None:
+        self.retried.append((task_id, retry_count, delay_ms))
 
 
 class FakeHttpClient(HttpClient):

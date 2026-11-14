@@ -71,6 +71,11 @@ def render_footer(summary: BenchmarkSummary) -> str:
     lines = ["----------------------------------------"]
     if summary.average_time is not None:
         lines.append(f"Average request time: {human_duration(summary.average_time)}")
+        lines.append(
+            f"Latency (min/median/p95/max): {human_duration(summary.min_time)} / "
+            f"{human_duration(summary.median_time)} / {human_duration(summary.p95_time)} / "
+            f"{human_duration(summary.max_time)}"
+        )
         lines.append(f"Total downloaded: {human_size(summary.total_bytes)}")
         lines.append(f"Average speed: {human_speed(summary.average_speed)}")
     else:
@@ -80,9 +85,7 @@ def render_footer(summary: BenchmarkSummary) -> str:
 
 
 def render_report(summary: BenchmarkSummary) -> str:
-    return "\n".join(
-        [render_header(summary), render_results(summary), "", render_footer(summary)]
-    )
+    return "\n".join([render_header(summary), render_results(summary), "", render_footer(summary)])
 
 
 def to_dict(summary: BenchmarkSummary) -> Dict[str, Any]:
@@ -96,10 +99,17 @@ def to_dict(summary: BenchmarkSummary) -> Dict[str, Any]:
         "average_time_seconds": (
             round(summary.average_time, 6) if summary.average_time is not None else None
         ),
+        "min_time_seconds": (round(summary.min_time, 6) if summary.min_time is not None else None),
+        "median_time_seconds": (
+            round(summary.median_time, 6) if summary.median_time is not None else None
+        ),
+        "p95_time_seconds": (round(summary.p95_time, 6) if summary.p95_time is not None else None),
+        "max_time_seconds": (round(summary.max_time, 6) if summary.max_time is not None else None),
+        "stddev_time_seconds": (
+            round(summary.stddev_time, 6) if summary.stddev_time is not None else None
+        ),
         "average_speed_bytes_per_second": (
-            round(summary.average_speed, 2)
-            if summary.average_speed is not None
-            else None
+            round(summary.average_speed, 2) if summary.average_speed is not None else None
         ),
         "results": [
             {

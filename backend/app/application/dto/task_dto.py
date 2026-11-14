@@ -1,4 +1,5 @@
 """Data transfer objects passed between the application and presentation layers."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

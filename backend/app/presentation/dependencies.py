@@ -1,4 +1,5 @@
 """FastAPI dependency providers (composition wiring)."""
+
 from __future__ import annotations
 
 from fastapi import Request
@@ -14,3 +15,7 @@ def get_task_repository(request: Request) -> DownloadTaskRepository:
 
 def get_message_publisher(request: Request) -> MessagePublisher:
     return request.app.state.publisher
+
+
+def get_url_guard(request: Request):
+    return getattr(request.app.state, "url_guard", None)

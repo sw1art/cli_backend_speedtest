@@ -1,4 +1,5 @@
 """SQLAlchemy implementation of the DownloadTaskRepository port."""
+
 from __future__ import annotations
 
 from typing import List, Optional
@@ -74,16 +75,11 @@ class SQLAlchemyTaskRepository(DownloadTaskRepository):
                 .limit(limit)
                 .offset(offset)
             )
-            return [
-                self._to_entity(m, include_results=False)
-                for m in result.scalars().all()
-            ]
+            return [self._to_entity(m, include_results=False) for m in result.scalars().all()]
 
     async def count(self) -> int:
         async with self._session_factory() as session:
-            result = await session.execute(
-                select(func.count()).select_from(DownloadTaskModel)
-            )
+            result = await session.execute(select(func.count()).select_from(DownloadTaskModel))
             return int(result.scalar_one())
 
     @staticmethod

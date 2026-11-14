@@ -1,4 +1,5 @@
 """Task endpoints."""
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -12,8 +13,10 @@ from ...application.use_cases.create_task import CreateDownloadTask
 from ...application.use_cases.get_history import GetDownloadHistory
 from ...application.use_cases.get_results import GetDownloadResults
 from ...application.use_cases.get_task import GetDownloadTask
+from ...domain.exceptions import UnsafeURL
 from ...domain.repositories.task_repository import DownloadTaskRepository
-from ..dependencies import get_message_publisher, get_task_repository
+from ...infrastructure.observability.metrics import TASKS_CREATED
+from ..dependencies import get_message_publisher, get_task_repository, get_url_guard
 from ..schemas.task import (
     CreateTaskRequest,
     TaskListResponse,
@@ -29,16 +32,18 @@ async def create_task(
     payload: CreateTaskRequest,
     repository: DownloadTaskRepository = Depends(get_task_repository),
     publisher: MessagePublisher = Depends(get_message_publisher),
+    url_guard=Depends(get_url_guard),
 ) -> TaskResponse:
-    use_case = CreateDownloadTask(repository=repository, publisher=publisher)
+    use_case = CreateDownloadTask(repository=repository, publisher=publisher, url_guard=url_guard)
     try:
         dto = await use_case.execute(
             CreateTaskDTO(url=payload.url, total_requests=payload.total_requests)
         )
+    except UnsafeURL as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
     except MessagePublishError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
+    TASKS_CREATED.inc()
     return TaskResponse.model_validate(dto)
 
 

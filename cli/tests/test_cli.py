@@ -1,4 +1,5 @@
 import json
+import os
 
 import pytest
 
@@ -47,3 +48,21 @@ def test_main_all_failed_returns_nonzero(capsys):
     fake = FakeBenchmarker([RequestResult(1, 0.5, 0, None, False, "connection error")])
     code = main(["https://example.com/file", "-n", "1"], benchmarker=fake)
     assert code == 3
+
+
+def test_main_output_writes_json_file(capsys):
+    fake = FakeBenchmarker([RequestResult(1, 1.0, 1_000_000, 200, True)])
+    out = "report_test.json"
+    try:
+        code = main(
+            ["https://example.com/file", "-n", "1", "--output", out],
+            benchmarker=fake,
+        )
+        assert code == 0
+        with open(out, encoding="utf-8") as fh:
+            data = json.loads(fh.read())
+        assert data["successful"] == 1
+        assert data["total_bytes"] == 1_000_000
+    finally:
+        if os.path.exists(out):
+            os.remove(out)

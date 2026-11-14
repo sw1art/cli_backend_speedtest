@@ -1,4 +1,5 @@
 """Task status enumeration."""
+
 from enum import Enum
 
 

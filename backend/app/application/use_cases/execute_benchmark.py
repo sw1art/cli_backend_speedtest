@@ -4,8 +4,10 @@ This is the worker-side use case. It is idempotent: terminal tasks are returned
 as-is, a PENDING task is started, and a task already in PROCESSING (for example
 after a crashed previous attempt) is resumed.
 """
+
 from __future__ import annotations
 
+from typing import Awaitable, Callable, Optional
 from uuid import UUID
 
 from ...domain.repositories.task_repository import DownloadTaskRepository
@@ -17,10 +19,14 @@ from ..interfaces.http_client import HttpClient
 
 class ExecuteDownloadBenchmark:
     def __init__(
-        self, repository: DownloadTaskRepository, http_client: HttpClient
+        self,
+        repository: DownloadTaskRepository,
+        http_client: HttpClient,
+        url_guard: Optional[Callable[[str], Awaitable[None]]] = None,
     ) -> None:
         self._repository = repository
         self._http_client = http_client
+        self._url_guard = url_guard
 
     async def execute(self, task_id: UUID) -> TaskDTO:
         task = await self._repository.get(task_id)
@@ -29,6 +35,11 @@ class ExecuteDownloadBenchmark:
 
         if task.is_terminal:
             return TaskDTO.from_entity(task)
+
+        # Defense in depth: re-check the URL at fetch time in case the DNS
+        # record changed since the task was created.
+        if self._url_guard is not None:
+            await self._url_guard(task.url)
 
         if task.status is TaskStatus.PENDING:
             task.start()

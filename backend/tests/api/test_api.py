@@ -7,13 +7,19 @@ from tests.fakes import FakePublisher, FakeTaskRepository
 
 def _client(repository=None, publisher=None):
     from app.main import create_app
-    from app.presentation.dependencies import get_message_publisher, get_task_repository
+    from app.presentation.dependencies import (
+        get_message_publisher,
+        get_task_repository,
+        get_url_guard,
+    )
 
     repository = repository or FakeTaskRepository()
     publisher = publisher or FakePublisher()
     app = create_app()
     app.dependency_overrides[get_task_repository] = lambda: repository
     app.dependency_overrides[get_message_publisher] = lambda: publisher
+    # Skip the SSRF guard in API tests (it is covered by dedicated unit tests).
+    app.dependency_overrides[get_url_guard] = lambda: None
     return TestClient(app)
 
 
@@ -29,9 +35,7 @@ def test_create_task():
     pub = FakePublisher()
     client = _client(repo, pub)
 
-    response = client.post(
-        "/api/v1/tasks", json={"url": "https://example.com/image.jpg"}
-    )
+    response = client.post("/api/v1/tasks", json={"url": "https://example.com/image.jpg"})
     assert response.status_code == 201
     data = response.json()
     assert data["status"] == "PENDING"

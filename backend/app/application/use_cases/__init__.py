@@ -4,6 +4,7 @@ from .fail_task import FailDownloadTask
 from .get_history import GetDownloadHistory
 from .get_results import GetDownloadResults
 from .get_task import GetDownloadTask
+from .process_task_message import ProcessTaskMessage, parse_message_body
 from .start_task import StartDownloadTask
 
 __all__ = [
@@ -13,5 +14,7 @@ __all__ = [
     "GetDownloadHistory",
     "GetDownloadResults",
     "GetDownloadTask",
+    "ProcessTaskMessage",
     "StartDownloadTask",
+    "parse_message_body",
 ]

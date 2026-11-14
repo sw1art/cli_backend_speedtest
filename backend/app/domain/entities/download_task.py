@@ -1,4 +1,5 @@
 """DownloadTask aggregate root and its state machine."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -47,25 +48,19 @@ class DownloadTask:
 
     def start(self, now: Optional[datetime] = None) -> None:
         if self.status is not TaskStatus.PENDING:
-            raise InvalidTaskStatusTransition(
-                f"Cannot start task in state {self.status.value}"
-            )
+            raise InvalidTaskStatusTransition(f"Cannot start task in state {self.status.value}")
         self.status = TaskStatus.PROCESSING
         self.started_at = now or _utc_now()
 
     def complete(self, now: Optional[datetime] = None) -> None:
         if self.status is not TaskStatus.PROCESSING:
-            raise InvalidTaskStatusTransition(
-                f"Cannot complete task in state {self.status.value}"
-            )
+            raise InvalidTaskStatusTransition(f"Cannot complete task in state {self.status.value}")
         self.status = TaskStatus.COMPLETED
         self.finished_at = now or _utc_now()
 
     def fail(self, error_message: str, now: Optional[datetime] = None) -> None:
         if self.status not in (TaskStatus.PENDING, TaskStatus.PROCESSING):
-            raise InvalidTaskStatusTransition(
-                f"Cannot fail task in state {self.status.value}"
-            )
+            raise InvalidTaskStatusTransition(f"Cannot fail task in state {self.status.value}")
         self.status = TaskStatus.FAILED
         self.error_message = error_message
         self.finished_at = now or _utc_now()

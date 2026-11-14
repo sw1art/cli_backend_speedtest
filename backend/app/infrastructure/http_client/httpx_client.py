@@ -1,4 +1,5 @@
 """Async HTTP client adapter implemented with httpx."""
+
 from __future__ import annotations
 
 import time

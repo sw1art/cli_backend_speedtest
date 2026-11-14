@@ -1,18 +1,16 @@
 """SQLAlchemy ORM models (infrastructure persistence)."""
+
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from ...core.time import utc_now
 from .base import Base
-
-
-def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
 
 
 class DownloadTaskModel(Base):
@@ -23,14 +21,10 @@ class DownloadTaskModel(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     total_requests: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utc_now, nullable=False
+        DateTime(timezone=True), default=utc_now, nullable=False
     )
-    started_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    finished_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     results: Mapped[List["RequestResultModel"]] = relationship(

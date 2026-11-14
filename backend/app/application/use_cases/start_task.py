@@ -1,4 +1,5 @@
 """Use case: transition a task from PENDING to PROCESSING."""
+
 from __future__ import annotations
 
 from uuid import UUID

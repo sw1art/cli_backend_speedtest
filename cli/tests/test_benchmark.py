@@ -103,3 +103,30 @@ def test_connection_error_is_recorded_as_failure():
     assert summary.successful == 0
     assert all(r.status_code is None for r in summary.results)
     assert all("boom" in r.error for r in summary.results)
+
+
+def test_summary_latency_statistics():
+    results = [
+        make_result(1, 1.0, 100),
+        make_result(2, 2.0, 100),
+        make_result(3, 3.0, 100),
+        make_result(4, 4.0, 100),
+    ]
+    summary = BenchmarkSummary(url="u", requested=4, results=results)
+    assert summary.min_time == 1.0
+    assert summary.max_time == 4.0
+    assert summary.median_time == pytest.approx(2.5)
+    assert summary.p95_time == pytest.approx(3.85)
+    assert summary.stddev_time == pytest.approx(1.2909944487358056)
+
+
+def test_requests_send_identity_encoding():
+    captured = {}
+
+    def handler(request):
+        captured["accept_encoding"] = request.headers.get("accept-encoding")
+        return httpx.Response(200, content=b"x" * 100)
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    DownloadBenchmarker(client=client).run("https://example.com/file", requests=1)
+    assert captured["accept_encoding"] == "identity"

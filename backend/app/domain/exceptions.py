@@ -1,4 +1,5 @@
 """Domain-layer exceptions."""
+
 from __future__ import annotations
 
 
@@ -8,6 +9,10 @@ class DomainError(Exception):
 
 class InvalidURL(DomainError):
     """Raised when a URL is malformed or unsupported."""
+
+
+class UnsafeURL(DomainError):
+    """Raised when a URL is rejected by the SSRF guard."""
 
 
 class InvalidTaskStatusTransition(DomainError):

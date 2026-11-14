@@ -133,6 +133,9 @@ docker compose up --build
 | `MAX_RETRIES` | Максимум повторов обработки | `3` |
 | `RETRY_DELAY_MS` | База задержки повтора (умножается на номер) | `2000` |
 | `HTTP_TIMEOUT` | Таймаут одного запроса, сек | `30.0` |
+| `SSRF_GUARD_ENABLED` | Включить SSRF-защиту | `true` |
+| `SSRF_ALLOW_PRIVATE` | Разрешить private/loopback-адреса (для локальной разработки) | `false` |
+| `SSRF_ALLOWED_HOSTS` | Хосты, которые всегда разрешены (через запятую) | пусто |
 
 ## REST API
 
@@ -143,7 +146,8 @@ docker compose up --build
 | `GET`  | `/api/v1/tasks/{id}/results` | Результаты измерений |
 | `GET`  | `/api/v1/tasks` | Список задач (пагинация) |
 | `GET`  | `/health` | Liveness-проверка |
-| `GET`  | `/health/ready` | Readiness (проверка БД) |
+| `GET`  | `/health/ready` | Readiness (проверка БД и брокера) |
+| `GET`  | `/metrics` | Prometheus-метрики |
 
 ### Примеры запросов
 
@@ -209,6 +213,26 @@ curl http://localhost:8000/api/v1/tasks/{uuid}/results
 | `status_code` | integer | HTTP-статус |
 | `success` | boolean | Успешен ли запрос (2xx) |
 | `error_message` | text | Ошибка (если есть) |
+
+## Безопасность (SSRF)
+
+Воркер качает URL, переданный клиентом, поэтому включена защита от SSRF:
+при создании задачи (и повторно в воркере перед скачиванием) URL проверяется на
+`http/https`, а его хост — на то, что он разрешается в **глобально
+маршрутизируемый** адрес. Private/loopback/link-local/резервированные адреса
+(например, `127.0.0.1`, `169.254.169.254`, `10.0.0.0/8`) отклоняются.
+
+Для локальной разработки можно:
+
+- разрешить приватные адреса: `SSRF_ALLOW_PRIVATE=true`;
+- или разрешить конкретные хосты: `SSRF_ALLOWED_HOSTS=api,host.docker.internal`.
+
+## Метрики
+
+Эндпоинт `/metrics` отдаёт Prometheus-метрики: счётчик `http_requests_total`
+и гистограмму `http_request_duration_seconds` (по шаблону маршрута, без
+кардинальности от UUID), а также счётчики `download_tasks_created_total`,
+`download_tasks_completed_total`, `download_tasks_failed_total`.
 
 ## Обработка задач и Retry
 

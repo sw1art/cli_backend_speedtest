@@ -1,61 +1,49 @@
-"""Worker process: consumes tasks from RabbitMQ and executes benchmarks."""
+"""Worker process: consumes tasks from RabbitMQ and executes benchmarks.
+
+The message-processing policy lives in the application layer
+(:class:`~app.application.use_cases.process_task_message.ProcessTaskMessage`);
+this module is a thin composition root that wires infrastructure together and
+runs the consumer loop.
+"""
+
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-from uuid import UUID
+import signal
 
-from .application.exceptions import TaskNotFoundError
 from .application.use_cases.execute_benchmark import ExecuteDownloadBenchmark
 from .application.use_cases.fail_task import FailDownloadTask
+from .application.use_cases.process_task_message import ProcessTaskMessage
 from .core.config import get_settings
 from .core.logging import setup_logging
 from .infrastructure.database.database import Database
 from .infrastructure.http_client.httpx_client import HttpxHttpClient
 from .infrastructure.messaging.rabbitmq_client import RabbitMQClient
+from .infrastructure.observability.metrics import TASKS_COMPLETED, TASKS_FAILED
 from .infrastructure.repositories.sqlalchemy_task_repository import SQLAlchemyTaskRepository
+from .infrastructure.ssrf import build_url_guard
 
 logger = logging.getLogger("download_benchmark.worker")
 
 
-async def _handle_message(message, mq, execute, fail_task, settings) -> None:
-    try:
-        body = json.loads(message.body)
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        logger.warning("Dropping malformed message")
-        await mq.ack(message)
-        return
+def _record_status(status: str) -> None:
+    if status == "COMPLETED":
+        TASKS_COMPLETED.inc()
+    elif status == "FAILED":
+        TASKS_FAILED.inc()
 
-    try:
-        task_id = UUID(body["task_id"])
-    except (KeyError, TypeError, ValueError):
-        logger.warning("Dropping message without a valid task_id")
-        await mq.ack(message)
-        return
 
-    retry_count = int(body.get("retry_count", 0))
+def _request_shutdown(signum, frame) -> None:
+    raise KeyboardInterrupt
 
-    try:
-        await execute.execute(task_id)
-        await mq.ack(message)
-    except TaskNotFoundError:
-        logger.warning("Task %s not found; dropping message", task_id)
-        await mq.ack(message)
-    except Exception as exc:
-        logger.exception("Benchmark for task %s failed", task_id)
-        if retry_count < settings.max_retries:
-            next_retry = retry_count + 1
-            await mq.publish_retry(task_id, next_retry, settings.retry_delay_ms * next_retry)
-            await mq.ack(message)
-        else:
-            try:
-                await fail_task.execute(
-                    task_id, f"Failed after {settings.max_retries} retries: {exc}"
-                )
-            except Exception:
-                logger.exception("Failed to mark task %s as FAILED", task_id)
-            await mq.ack(message)
+
+def _install_signal_handlers() -> None:
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        try:
+            signal.signal(sig, _request_shutdown)
+        except (ValueError, OSError, AttributeError):
+            pass
 
 
 async def run_worker() -> None:
@@ -69,8 +57,19 @@ async def run_worker() -> None:
         settings.rabbitmq_url, settings.rabbitmq_queue, settings.rabbitmq_retry_queue
     )
 
-    execute = ExecuteDownloadBenchmark(repository=repository, http_client=http_client)
+    url_guard = build_url_guard(settings)
+    execute = ExecuteDownloadBenchmark(
+        repository=repository, http_client=http_client, url_guard=url_guard
+    )
     fail_task = FailDownloadTask(repository=repository)
+    processor = ProcessTaskMessage(
+        execute=execute,
+        fail_task=fail_task,
+        publisher=mq,
+        max_retries=settings.max_retries,
+        retry_delay_ms=settings.retry_delay_ms,
+        on_status=_record_status,
+    )
 
     await mq.connect()
     logger.info("Worker connected to RabbitMQ")
@@ -79,7 +78,8 @@ async def run_worker() -> None:
         async with mq.iterate() as iterator:
             async for message in iterator:
                 try:
-                    await _handle_message(message, mq, execute, fail_task, settings)
+                    await processor.process(message.body)
+                    await mq.ack(message)
                 except Exception:
                     logger.exception("Unhandled worker error; rejecting message")
                     try:
@@ -93,4 +93,8 @@ async def run_worker() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(run_worker())
+    _install_signal_handlers()
+    try:
+        asyncio.run(run_worker())
+    except KeyboardInterrupt:
+        logger.info("Worker stopped by signal")

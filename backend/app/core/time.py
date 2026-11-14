@@ -1,4 +1,5 @@
 """Time helpers shared by infrastructure adapters."""
+
 from datetime import datetime, timezone
 
 

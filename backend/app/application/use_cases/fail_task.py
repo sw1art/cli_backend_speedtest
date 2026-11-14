@@ -1,4 +1,5 @@
 """Use case: mark a task as FAILED (idempotent for terminal states)."""
+
 from __future__ import annotations
 
 from uuid import UUID

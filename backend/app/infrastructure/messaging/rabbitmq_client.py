@@ -5,6 +5,7 @@ dead-letter exchange pointing back at the main queue, so messages published to
 the retry queue with a per-message TTL are automatically redelivered to the main
 queue after the delay (the standard RabbitMQ retry pattern).
 """
+
 from __future__ import annotations
 
 import json
@@ -15,10 +16,13 @@ import aio_pika
 from aio_pika.abc import AbstractIncomingMessage
 
 from ...application.exceptions import MessagePublishError
-from ...application.interfaces.message_publisher import MessagePublisher
+from ...application.interfaces.message_publisher import (
+    MessagePublisher,
+    RetryableMessagePublisher,
+)
 
 
-class RabbitMQClient(MessagePublisher):
+class RabbitMQClient(RetryableMessagePublisher):
     def __init__(
         self,
         url: str,
@@ -75,6 +79,9 @@ class RabbitMQClient(MessagePublisher):
 
     def iterate(self) -> AsyncIterator[AbstractIncomingMessage]:
         return self._queue.iterator()
+
+    def is_connected(self) -> bool:
+        return self._channel is not None and not self._channel.is_closed
 
     async def ack(self, message: AbstractIncomingMessage) -> None:
         await message.ack()

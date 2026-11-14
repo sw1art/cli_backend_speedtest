@@ -1,4 +1,5 @@
 """Use case: fetch the results of a download task."""
+
 from __future__ import annotations
 
 from uuid import UUID

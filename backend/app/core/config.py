@@ -1,4 +1,5 @@
 """Application settings loaded from environment variables and ``.env``."""
+
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -22,6 +23,11 @@ class Settings(BaseSettings):
     http_timeout: float = 30.0
     default_requests: int = 10
     max_requests: int = 100
+
+    ssrf_guard_enabled: bool = True
+    ssrf_allow_private: bool = False
+    # Comma-separated list of hostnames always allowed by the SSRF guard.
+    ssrf_allowed_hosts: str = ""
 
 
 @lru_cache

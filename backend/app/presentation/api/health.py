@@ -1,4 +1,5 @@
 """Health endpoints."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
@@ -16,7 +17,7 @@ async def health() -> dict:
 
 @router.get("/health/ready")
 async def readiness(request: Request) -> JSONResponse:
-    """Readiness probe: 200 only when the database is reachable."""
+    """Readiness probe: 200 only when the database and broker are reachable."""
     database = getattr(request.app.state, "database", None)
     db_ok = False
     if database is not None:
@@ -27,8 +28,15 @@ async def readiness(request: Request) -> JSONResponse:
         except Exception:
             db_ok = False
 
-    if db_ok:
-        return JSONResponse(status_code=200, content={"status": "ok", "database": "ok"})
+    mq = getattr(request.app.state, "mq", None)
+    broker_ok = mq is not None and bool(getattr(mq, "is_connected", lambda: False)())
+
+    healthy = db_ok and broker_ok
     return JSONResponse(
-        status_code=503, content={"status": "degraded", "database": "unavailable"}
+        status_code=200 if healthy else 503,
+        content={
+            "status": "ok" if healthy else "degraded",
+            "database": "ok" if db_ok else "unavailable",
+            "broker": "ok" if broker_ok else "unavailable",
+        },
     )

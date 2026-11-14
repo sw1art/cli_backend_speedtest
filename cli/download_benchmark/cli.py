@@ -8,18 +8,15 @@ from typing import List, Optional
 
 from . import __version__
 from .benchmark import (
-    BenchmarkSummary,
     DEFAULT_REQUESTS,
     DEFAULT_TIMEOUT_SECONDS,
+    BenchmarkSummary,
     DownloadBenchmarker,
     validate_url,
 )
 from .errors import BenchmarkError
 from .formatter import (
     format_result,
-    human_duration,
-    human_size,
-    human_speed,
     render_footer,
     render_header,
     render_json,
@@ -63,6 +60,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Emit a single JSON document instead of the human-readable report.",
     )
     parser.add_argument(
+        "-o",
+        "--output",
+        metavar="FILE",
+        help="Additionally write the JSON report to FILE.",
+    )
+    parser.add_argument(
         "--version",
         action="version",
         version=f"%(prog)s {__version__}",
@@ -70,7 +73,9 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Optional[List[str]] = None, benchmarker: Optional[DownloadBenchmarker] = None) -> int:
+def main(
+    argv: Optional[List[str]] = None, benchmarker: Optional[DownloadBenchmarker] = None
+) -> int:
     """Run the CLI and return a process exit code.
 
     ``benchmarker`` is injectable for testing purposes only.
@@ -108,6 +113,17 @@ def main(argv: Optional[List[str]] = None, benchmarker: Optional[DownloadBenchma
     except BenchmarkError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_USAGE
+
+    if args.output:
+        try:
+            with open(args.output, "w", encoding="utf-8") as fh:
+                fh.write(render_json(summary) + "\n")
+        except OSError as exc:
+            print(
+                f"error: cannot write report to '{args.output}': {exc}",
+                file=sys.stderr,
+            )
+            return EXIT_USAGE
 
     if args.json:
         print(render_json(summary))

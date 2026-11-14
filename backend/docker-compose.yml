@@ -52,6 +52,9 @@ services:
       MAX_RETRIES: ${MAX_RETRIES:-3}
       RETRY_DELAY_MS: ${RETRY_DELAY_MS:-2000}
       HTTP_TIMEOUT: ${HTTP_TIMEOUT:-30.0}
+      SSRF_GUARD_ENABLED: ${SSRF_GUARD_ENABLED:-true}
+      SSRF_ALLOW_PRIVATE: ${SSRF_ALLOW_PRIVATE:-false}
+      SSRF_ALLOWED_HOSTS: ${SSRF_ALLOWED_HOSTS:-}
     ports:
       - "8000:8000"
     depends_on:
@@ -78,6 +81,9 @@ services:
       MAX_RETRIES: ${MAX_RETRIES:-3}
       RETRY_DELAY_MS: ${RETRY_DELAY_MS:-2000}
       HTTP_TIMEOUT: ${HTTP_TIMEOUT:-30.0}
+      SSRF_GUARD_ENABLED: ${SSRF_GUARD_ENABLED:-true}
+      SSRF_ALLOW_PRIVATE: ${SSRF_ALLOW_PRIVATE:-false}
+      SSRF_ALLOWED_HOSTS: ${SSRF_ALLOWED_HOSTS:-}
     depends_on:
       postgres:
         condition: service_healthy

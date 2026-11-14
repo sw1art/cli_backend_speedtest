@@ -46,5 +46,6 @@ def test_render_report_contains_averages():
     )
     text = render_report(summary)
     assert "Average request time: 1.00 sec" in text
+    assert "Latency (min/median/p95/max): 1.00 sec / 1.00 sec / 1.00 sec / 1.00 sec" in text
     assert "Total downloaded: 2.00 MB" in text
     assert "Average speed: 1.00 MB/s" in text

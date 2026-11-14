@@ -1,4 +1,5 @@
 """Value objects describing benchmark results and their statistics."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

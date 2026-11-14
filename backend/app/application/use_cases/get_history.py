@@ -1,4 +1,5 @@
 """Use case: fetch the download task history (paginated)."""
+
 from __future__ import annotations
 
 from ...domain.repositories.task_repository import DownloadTaskRepository
