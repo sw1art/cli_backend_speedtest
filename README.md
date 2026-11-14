@@ -13,28 +13,6 @@
 Обе части реализуют одну и ту же бизнес-логику (последовательные запросы,
 замер времени, подсчёт байтов, расчёт скорости), но независимы друг от друга.
 
-## Структура репозитория
-
-```
-thats_easy/
-├── cli/                 # Реализация №1 (**CLI-утилита**) Консольная утилита
-│   └── download_benchmark/
-├── backend/             # Реализация №2 (**Backend-сервис**) FastAPI + Clean Architecture + Docker
-│   ├── app/
-│   │   ├── domain/        # сущности, value objects, интерфейсы репозиториев, сервисы
-│   │   ├── application/   # use cases, DTO, порты (interfaces)
-│   │   ├── infrastructure/# БД (SQLAlchemy/asyncpg), репозитории, httpx, RabbitMQ
-│   │   ├── presentation/  # FastAPI роутеры, схемы, DI
-│   │   ├── core/          # конфигурация, логирование
-│   │   ├── main.py        # фабрика приложения (composition root)
-│   │   └── worker.py      # отдельный процесс-воркер
-│   ├── migrations/        # Alembic-миграции
-│   ├── tests/
-│   ├── docker-compose.yml
-│   └── Dockerfile
-└── README.md        
-```
-
 ## Быстрый старт
 
 - CLI: см. [`cli/README.md`](cli/README.md)
@@ -61,3 +39,25 @@ docker compose up --build
 
 После запуска API доступен на `http://localhost:8000`, документация Swagger —
 на `http://localhost:8000/docs`.
+
+
+## Структура репозитория
+
+```
+├── cli/                 # Реализация №1 (**CLI-утилита**) Консольная утилита
+│   └── download_benchmark/
+├── backend/             # Реализация №2 (**Backend-сервис**) FastAPI + Clean Architecture + Docker
+│   ├── app/
+│   │   ├── domain/        # сущности, value objects, интерфейсы репозиториев, сервисы
+│   │   ├── application/   # use cases, DTO, порты (interfaces)
+│   │   ├── infrastructure/# БД (SQLAlchemy/asyncpg), репозитории, httpx, RabbitMQ
+│   │   ├── presentation/  # FastAPI роутеры, схемы, DI
+│   │   ├── core/          # конфигурация, логирование
+│   │   ├── main.py        # фабрика приложения (composition root)
+│   │   └── worker.py      # отдельный процесс-воркер
+│   ├── migrations/        # Alembic-миграции
+│   ├── tests/
+│   ├── docker-compose.yml
+│   └── Dockerfile
+└── README.md        
+```
